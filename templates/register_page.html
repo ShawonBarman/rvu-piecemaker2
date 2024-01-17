@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Register
+{% endblock %}
+
+{% block content %}
+    
+    {% load static %}
+    <div class="register-page">
+        {% if messages %}
+            <div class="alert">
+                {% for message in messages %}
+                    <script>alert("{{ message }}");</script>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="register-container">
+            <h2>Register for RVU Piecemaker 2.0</h2>
+            <form method="post" action="{% url 'signup' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <input type="text" id="fullname" name="fullname" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Confirm Password</label>
+                    <input type="password" id="password" name="confirm_password" required>
+                </div>
+
+                <button type="submit" class="regis-btn">Register</button>
+            </form>
+
+            <div class="login-link">
+                Already have an account? <a href="{% url 'signin' %}">Login here</a>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}

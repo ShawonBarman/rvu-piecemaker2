@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Home
+{% endblock %}
+
+{% block content %}
+    
+    {% load static %}
+    <div class="container-fluid">
+        <div class="row main-page">
+            <div class="col-4 filter-section">
+                <div class="calender-container">
+                    <label for="datepicker">Date Picker:</label>
+                    <input type="hidden" id="datepicker" class="form-control">
+                </div>
+                <div class="shifts-container">
+                    <label for="shifts">Shift:</label>
+                    <select id="shifts" class="form-select mx-auto" style="width: 312px;">
+                        <option value=""></option>
+                        {% for shift in shifts %}
+                            <option value="{{ shift.id }}">{{ shift.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="rvu-input-container">
+                    <label for="rvuInput">Total RVUs:</label>
+                    <p id="total-rvus"></p>
+                </div>
+            </div>
+    
+            <div class="col-2 groups-section">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th class="arrow-up-tr move-folder-up-btn"><i class="fas fa-arrow-up"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if folders %}
+                                {% for folder in folders %}
+                                    <tr data-folder-id="{{ folder.id }}">
+                                        <td>{{ folder.name }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th class="arrow-down-tr move-folder-down-btn"><i class="fas fa-arrow-down"></i></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+    
+            <div class="col-5 results-section">
+                <div class="table-container">
+                    <table class="table">
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this element to your HTML -->
+    <div id="notification" class="notification">
+        <span id="notificationMessage"></span>
+        <button id="closeNotification" class="btn btn-danger">Close</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Flatpickr
+            var datepicker = flatpickr("#datepicker", {
+                altInput: true,
+                altFormat: "F j, Y",
+                defaultDate: new Date(),
+                dateFormat: "Y-m-d",
+                position: "below",
+                static: true,
+                inline: true
+            });
+
+            updateTotalRVUs();
+    
+            // Event listener for date changes
+            datepicker.config.onChange.push(function (selectedDates, dateStr) {
+                updateTotalRVUs(); // Call a function to update Total RVUs
+            });
+    
+            // Function to update Total RVUs
+            function updateTotalRVUs() {
+                var selectedDate = datepicker.selectedDates[0]; // Get selected date
+                var formattedDate = formatDate(selectedDate); // Format the date
+ 
+                // Make an AJAX request to the server to get Total RVUs
+                $.ajax({
+                    type: "GET",
+                    url: "/get_total_rvus/",
+                    data: {
+                        selected_date: formattedDate,
+                    },
+                    success: function (response) {
+                        // Update the Total RVUs on the page
+                        document.getElementById("total-rvus").textContent = (response.total_rvus);
+                    },
+                    error: function (error) {
+                        message = "Error fetching Total RVUs: "+ error;
+                        showNotification(message);
+                        console.error("Error fetching Total RVUs:", error);
+                    }
+                });
+            }
+            // Function to format date as YYYY-MM-DD
+            function formatDate(date) {
+                var year = date.getFullYear();
+                var month = String(date.getMonth() + 1).padStart(2, '0');
+                var day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            // Function to handle the click of the move folder up button
+            const moveFolderUpBtn = document.querySelector('.move-folder-up-btn');
+            moveFolderUpBtn.addEventListener('click', function () {
+                moveFolder('up');
+            });
+
+            // Function to handle the click of the move folder down button
+            const moveFolderDownBtn = document.querySelector('.move-folder-down-btn');
+            moveFolderDownBtn.addEventListener('click', function () {
+                moveFolder('down');
+            });
+
+            // Keep track of the currently selected folder ID
+            let selectedFolderId = null;
+
+            // Event listener for click on a folder
+            const foldersTable = document.querySelector('.groups-section .table tbody');
+            foldersTable.addEventListener('click', function (event) {
+                const targetFolder = event.target.closest('tr[data-folder-id]');
+                if (targetFolder) {
+                    const folderId = targetFolder.getAttribute('data-folder-id');
+
+                    // If the clicked folder is already selected, deselect it
+                    if (selectedFolderId === folderId) {
+                        targetFolder.classList.remove('selected-folder');
+                        selectedFolderId = null;
+                        const tableBody = document.querySelector('.results-section .table tbody');
+                        // Clear existing rows
+                        tableBody.innerHTML =""
+                    } else {
+                        // Deselect the previously selected folder
+                        const previousSelectedFolder = foldersTable.querySelector('.selected-folder');
+                        if (previousSelectedFolder) {
+                            previousSelectedFolder.classList.remove('selected-folder');
+                        }
+
+                        // Select the clicked folder
+                        targetFolder.classList.add('selected-folder');
+                        selectedFolderId = folderId;
+                        
+                        // Make an AJAX request to get folder records
+                        updateFolderRecords(selectedFolderId);
+                    }
+                }
+            });
+
+            function moveFolder(direction) {
+                const allFolders = document.querySelectorAll('.groups-section .table tbody tr');
+                const activeFolder = document.querySelector('.groups-section .table tbody tr.selected-folder');
+
+                if (activeFolder) {
+                    // Deselect the currently selected folder
+                    activeFolder.classList.remove('selected-folder');
+                    activeFolder.style.backgroundColor = '';
+                    activeFolder.style.color = '';
+                }
+
+                if (allFolders.length > 0) {
+                    // If there are folders, select the appropriate folder based on the direction
+                    let targetIndex;
+                    if (!activeFolder) {
+                        // If no folder is currently selected, select the first or last folder based on the direction
+                        targetIndex = direction === 'up' ? allFolders.length - 1 : 0;
+                    } else {
+                        // If a folder is currently selected, find its index and select the adjacent folder
+                        const activeIndex = Array.from(allFolders).indexOf(activeFolder);
+                        targetIndex = direction === 'up' ? activeIndex - 1 : activeIndex + 1;
+                        // Ensure the index stays within bounds
+                        targetIndex = (targetIndex + allFolders.length) % allFolders.length;
+                    }
+
+                    // Select the target folder
+                    const targetFolder = allFolders[targetIndex];
+                    targetFolder.classList.add('selected-folder');
+                    targetFolder.style.backgroundColor = '#f9f9f9';
+                    targetFolder.style.color = '#000';
+                    // Get the selectedFolderId from the data-folder-id attribute
+                    selectedFolderId = targetFolder.getAttribute('data-folder-id');
+                    updateFolderRecords(selectedFolderId);
+                }
+            }
+
+            // Function to make an AJAX request and update folder records
+            function updateFolderRecords(folderId) {
+                // Make an AJAX request to the server to get folder records
+                $.ajax({
+                    type: "GET",
+                    url: `/get_folder_records/${folderId}/`,
+                    success: function (response) {
+                        // Update the table with the received data
+                        updateTable(response.data);
+                    },
+                    error: function (error) {
+                        message = "Error fetching folder records: "+ error;
+                        showNotification(message);
+                        console.error("Error fetching folder records:", error);
+                    }
+                });
+            }
+
+            // Function to update the table with folder records
+            function updateTable(records) {
+                const tableBody = document.querySelector('.results-section .table tbody');
+                // Clear existing rows
+                tableBody.innerHTML = '';
+    
+                // Add new rows based on the received records
+                records.forEach(pair => {
+                    const row = document.createElement('tr');
+    
+                    // Add cell for record 1
+                    const descriptionCell1 = createCell(pair.record1);
+                    row.appendChild(descriptionCell1);
+    
+                    // Add cell for record 2
+                    const descriptionCell2 = createCell(pair.record2);
+                    row.appendChild(descriptionCell2);
+    
+                    tableBody.appendChild(row);
+                });
+            }
+    
+            // Function to create a table cell with a button
+            function createCell(record) {
+                const cell = document.createElement('td');
+                if (record) {
+                    const button = document.createElement('button');
+                    button.textContent = record.description;
+                    button.classList.add('record-button');
+                    button.addEventListener('mouseover', function () {
+                        button.style.color = '#ffa600'; // Change text color on hover
+                    });
+                    button.addEventListener('mouseout', function () {
+                        button.style.color = ''; // Reset text color on mouseout
+                    });
+                    button.addEventListener('click', function () {
+                        // Call a function to handle button click and pass record ID
+                        handleButtonClick(record.id);
+                    });
+                    cell.appendChild(button);
+                }
+                return cell;
+            }
+    
+            // Function to handle button click
+            function handleButtonClick(recordId) {
+                const selectedShift = document.getElementById("shifts").value; // Get selected shift
+                var selectedDate = datepicker.selectedDates[0]; // Get selected date
+                var formattedDate = formatDate(selectedDate); // Format the date
+ 
+                // Make an AJAX request to the server to get procedure records based on recordId and selectedShift
+                $.ajax({
+                    type: "GET",
+                    url: "/get_procedure_records/",
+                    data: {
+                        record_id: recordId,
+                        selected_shift: selectedShift,
+                        selected_date: formattedDate,
+                    },
+                    success: function (response) {
+                        // Display success message in the notification
+                        var message = response.description + " - this record created successfully at " + response.created_at;
+                        if (response.shift_name) {
+                            message += " with shift name: " + response.shift_name;
+                        }
+                        showNotification(message);
+                        updateTotalRVUs();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        // Handle the error message and show it in the notification
+                        var errorMessage = xhr.responseJSON.error;
+                        showNotification("Error: " + errorMessage, true);
+                    }
+                });
+            }
+
+            // Function to show notification
+            function showNotification(message, isError = false) {
+                const notificationElement = document.getElementById("notification");
+                const notificationMessageElement = document.getElementById("notificationMessage");
+
+                // Set notification message and style
+                notificationMessageElement.innerText = message;
+                notificationElement.classList.toggle("error", isError);
+
+                // Show notification
+                notificationElement.style.display = "block";
+
+                // Auto-close after 2 seconds
+                setTimeout(function () {
+                    hideNotification();
+                }, 2000);
+            }
+
+            // Function to hide notification
+            function hideNotification() {
+                const notificationElement = document.getElementById("notification");
+                notificationElement.style.display = "none";
+            }
+
+            // Attach event listener to close button
+            document.getElementById("closeNotification").addEventListener("click", function () {
+                hideNotification();
+            });
+        });
+    </script>
+    
+
+{% endblock content %}

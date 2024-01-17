@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Home
+{% endblock %}
+
+{% block content %}
+    
+    {% load static %}
+    <div class="home_page">
+        <section class="h-first-section">
+            <h2>Welcome to RVU Piecemaker 2.0</h2>
+            <p>This is a web application that allows users to log medical imaging procedures in real-time and generate reports. Enhance your workflow with our intuitive platform.</p>
+        </section>
+        {% if not user.is_authenticated %}
+        <section class="h-second-section">
+            <h2>Join RVU Today</h2>
+            <p>Explore exciting opportunities and join our community of medical professionals. Contribute to the future of medical imaging with RVU Piecemaker 2.0.</p>
+            <a href="{% url 'signup' %}" class="btn btn-primary join-btn">Join Now</a>
+        </section>
+        {% else %}
+        <section class="h-second-section">
+            <h2>Welcome, {{ user.first_name }}!</h2>
+            <p>Thank you for being part of our community. Explore the latest features and updates in RVU Piecemaker 2.0.</p>
+        </section>
+        {% endif %}
+        <section class="h-third-section">
+            <h2>Main View</h2>
+            <p>The Main view provides a user-friendly interface for quickly logging completed exams and displays feedback regarding the amount of work completed. It includes a date-picker, shift-picker, and tools for efficient logging.</p>
+        </section>
+    
+        <section class="h-fourth-section">
+            <h2>Management View</h2>
+            <p>The Management view allows users to manage procedures, folders, and shifts. Users can create, edit, and delete procedures, organize them into folders, and define shifts for better organization.</p>
+        </section>
+    
+        <section class="h-fifth-section">
+            <h2>Reports View</h2>
+            <p>In the Reports view, users can generate detailed reports based on the logged procedures. The view includes a sortable table, date range filters, and tools to filter data based on shifts, modalities, descriptions, and CPT codes.</p>
+        </section>
+    </div>
+
+{% endblock content %}

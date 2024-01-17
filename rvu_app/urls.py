@@ -1,0 +1,32 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.index, name="home"),
+    path('signin/', views.sign_in, name="signin"),
+    path('register/', views.sign_up, name="signup"),
+    path('logout/', views.user_logout, name='logout'),
+    path('change_password/', views.change_password, name='change_password'),
+    path('management/', views.management, name="management"),
+    path('add_procedure/', views.add_procedure, name='add_procedure'),
+    path('get_procedure/<int:procedure_id>/', views.get_procedure, name='get_procedure'),
+    path('edit_procedure/', views.edit_procedure, name='edit_procedure'),
+    path('delete_procedure/<int:procedure_id>/', views.delete_procedure, name='delete_procedure'),
+    path('add_folder/', views.add_folder, name='add_folder'),
+    path('delete_folder/', views.delete_folder, name='delete_folder'),
+    path('update_folder_order/', views.update_folder_order, name='update_folder_order'),
+    path('move_selected_to_folder/', views.move_selected_to_folder, name='move_selected_to_folder'),
+    path('get_folder_details/<int:folder_id>/', views.get_folder_details, name='get_folder_details'),
+    path('delete_record/', views.delete_record, name='delete_record'),
+    path('update_folder_procedure_order/', views.update_folder_procedure_order, name='update_folder_procedure_order'),
+    path('add_shift/', views.add_shift, name='add_shift'),
+    path('delete_shift/', views.delete_shift, name='delete_shift'),
+    path('update_shift_order/', views.update_shift_order, name='update_shift_order'),
+    path('main/', views.main, name="main"),
+    path('get_total_rvus/', views.get_total_rvus, name='get_total_rvus'),
+    path('get_folder_records/<int:folder_id>/', views.get_folder_records, name='get_folder_records'),
+    path('get_procedure_records/', views.get_procedure_records, name='get_procedure_records'),
+    path('reports/', views.reports, name="reports"),
+    path('get_filtered_data/', views.get_filtered_data, name='get_filtered_data'),
+    path('delete_record/', views.delete_record, name='delete_record'),
+]

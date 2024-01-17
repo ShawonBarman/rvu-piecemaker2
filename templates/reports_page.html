@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Home
+{% endblock %}
+
+{% block content %}
+    
+    {% load static %}
+    <div class="container-fluid">
+        <div class="row report-page">
+            <div class="col-3 filter-section">
+                <h3>Filter By</h3>
+                <div class="calender-container">
+                    <label for="start_date">Date Start:</label>
+                    <input type="date" id="start_date" class="form-control" value="{{ today_date|date:'Y-m-d' }}">
+                </div>
+                <div class="calender-container">
+                    <label for="end_date">Date End:</label>
+                    <input type="date" id="end_date" class="form-control" value="{{ today_date|date:'Y-m-d' }}">
+                </div>
+                <div class="shifts-container">
+                    <label for="shifts">Shift:</label>
+                    <select id="shifts" class="form-select">
+                        <option value=""></option>
+                        {% for shift in user_shifts %}
+                            <option value="{{ shift.id }}">{{ shift.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="shifts-container">
+                    <label for="modalities">Modality:</label>
+                    <select id="modalities" class="form-select">
+                        <option value=""></option>
+                        <option value="CR">CR</option>
+                        <option value="CT">CT</option>
+                        <option value="MG">MG</option>
+                        <option value="MR">MR</option>
+                        <option value="NM">NM</option>
+                        <option value="OT">OT</option>
+                        <option value="PT">PT</option>
+                        <option value="US">US</option>
+                    </select>
+                </div>
+                <div class="shifts-container">
+                    <label for="descriptions">Description:</label>
+                    <input type="text" id="descriptions" class="form-control">
+                </div>
+                <div class="shifts-container">
+                    <label for="cpts">CPT:</label>
+                    <input type="text" id="cpts" class="form-control">
+                </div>
+            </div>
+    
+            <div class="col-8 results-section" style="width: 70%;">
+                <h3>Results</h3>
+                <div class="table-container">
+                    <table class="table" id="results-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Date/Time</th>
+                                <th style="width: 10%;">CPT</th>
+                                <th style="width: 15%;">Shift</th>
+                                <th style="width: 10%;">MOD.</th>
+                                <th>Description</th>
+                                <th style="width: 10%;">RVU</th>
+                                <th style="width: 10%;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body">
+                            <!-- Table rows will go here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bottom-result">
+                    <div class="row d-flex justify-content-center align-items-center">
+                        <div class="col-5">
+                            <div id="pieChart" style="width: 300px; height: 250px;"></div>
+                        </div>
+                        <div class="col-3 text-center">
+                            <b style="font-size: 30px;">Total Exams:</b>
+                            <p id="total-exams" style="font-size: 24px;">0</p>
+                        </div>
+                        <div class="col-3 text-center">
+                            <b style="font-size: 30px;">Total RVUs:</b>
+                            <p id="total-rvus" style="font-size: 24px;">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this element to your HTML -->
+    <div id="notification" class="notification">
+        <span id="notificationMessage"></span>
+        <button id="closeNotification" class="btn btn-danger">Close</button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Sample data for the pie chart
+            var pieData = [];
+
+            // Create the pie chart using Syncfusion Essential JS 2
+            var pie = new ej.charts.AccumulationChart({
+                series: [{
+                    dataSource: pieData,
+                    xName: 'x',
+                    yName: 'y',
+                    type: 'Pie',
+                    dataLabel: {
+                        visible: true, // Show data labels
+                        position: 'Inside', // Position of data labels
+                        name: 'text', // Use 'text' property for labels
+                        font: {
+                            color: 'white' // Set text color to white
+                        },
+                        template: '<b>${point.y}%</b>' // Template for data labels
+                    }
+                }],
+                legendSettings: { visible: true, position: 'Left', textStyle: { color: 'white' } },
+                background: 'transparent',
+            });
+            pie.appendTo('#pieChart');
+
+            filterAndLoadData();
+
+            // Add event listener for the end_date input
+            document.getElementById("start_date").addEventListener("change", function() {
+                // Get the selected start and end dates
+                var startDate = new Date(document.getElementById("start_date").value);
+                var endDate = new Date(document.getElementById("end_date").value);
+
+                // Check if end date is before start date
+                if (endDate < startDate) {
+                    // If so, set end date to start date
+                    document.getElementById("start_date").value = document.getElementById("end_date").value;
+                    showNotification("Start date cannot be after the end date. Start date adjusted to be equal or before the end date.", isError = true);
+                }
+            });
+
+            // Add event listener for the end_date input
+            document.getElementById("end_date").addEventListener("change", function() {
+                // Get the selected start and end dates
+                var startDate = new Date(document.getElementById("start_date").value);
+                var endDate = new Date(document.getElementById("end_date").value);
+
+                // Check if end date is before start date
+                if (endDate < startDate) {
+                    // If so, set end date to start date
+                    document.getElementById("end_date").value = document.getElementById("start_date").value;
+                    showNotification("End date cannot be before the start date. End date adjusted to be equal or after the start date.", isError = true);
+                }
+            });
+
+            // Function to show notification
+            function showNotification(message, isError = false) {
+                const notificationElement = document.getElementById("notification");
+                const notificationMessageElement = document.getElementById("notificationMessage");
+
+                // Set notification message and style
+                notificationMessageElement.innerText = message;
+                notificationElement.classList.toggle("error", isError);
+
+                // Show notification
+                notificationElement.style.display = "block";
+
+                // Auto-close after 2 seconds
+                setTimeout(function () {
+                    hideNotification();
+                }, 2000);
+            }
+
+            // Function to hide notification
+            function hideNotification() {
+                const notificationElement = document.getElementById("notification");
+                notificationElement.style.display = "none";
+            }
+
+            // Attach event listener to close button
+            document.getElementById("closeNotification").addEventListener("click", function () {
+                hideNotification();
+            });
+        
+            // Add event listeners for filter changes
+            document.getElementById("start_date").addEventListener("change", filterAndLoadData);
+            document.getElementById("end_date").addEventListener("change", filterAndLoadData);
+            document.getElementById("shifts").addEventListener("change", filterAndLoadData);
+            document.getElementById("modalities").addEventListener("change", filterAndLoadData);
+            //document.getElementById("descriptions").addEventListener("change", filterAndLoadData);
+            //document.getElementById("cpts").addEventListener("change", filterAndLoadData);
+            
+            // Add event listeners for input changes in CPT and Description fields
+            document.getElementById("cpts").addEventListener("input", filterAndLoadData);
+            document.getElementById("descriptions").addEventListener("input", filterAndLoadData);
+        
+            function filterAndLoadData() {
+                // Collect filter values
+                var startDate = document.getElementById("start_date").value;
+                var endDate = document.getElementById("end_date").value;
+                var shiftId = document.getElementById("shifts").value;
+                var modality = document.getElementById("modalities").value;
+                var description = document.getElementById("descriptions").value;
+                var cpt = document.getElementById("cpts").value;
+        
+                // Make an AJAX request to the server to get filtered data
+                $.ajax({
+                    type: "GET",
+                    url: "/get_filtered_data/",
+                    data: {
+                        start_date: startDate,
+                        end_date: endDate,
+                        shift_id: shiftId,
+                        modality: modality,
+                        description: description,
+                        cpt: cpt,
+                    },
+                    success: function(response) {
+                        // Update the table with the fetched data
+                        updateTable(response.data);
+
+                        // Update the pie chart with modality distribution
+                        updatePieChart(response.modality_distribution);
+        
+                        // Calculate total exams and total RVUs
+                        var totalExams = response.data.length;
+                        var totalRVUs = response.data.reduce(function(sum, row) {
+                            return sum + parseFloat(row.rvu || 0);
+                        }, 0);
+        
+                        // Update total exams and total RVUs
+                        updateTotals(totalExams, totalRVUs);
+                    },
+                    error: function(error) {
+                        message = "Error fetching data: " + error;
+                        showNotification(message, isError=true);
+                        console.error("Error fetching data:", error);
+                    }
+                });
+            }
+        
+            // Function to update the table with filtered data
+            function updateTable(data) {
+                var tableBody = document.getElementById("results-table-body");
+                tableBody.innerHTML = "";  // Clear existing rows
+        
+                // Iterate through the data and append rows to the table
+                data.forEach(function(rowData) {
+                    var row = document.createElement("tr");
+        
+                    // Exclude 'record_id' from Object.keys(rowData) to avoid showing it in the table
+                    Object.keys(rowData).filter(key => key !== 'record_id').forEach(function(key) {
+                        var cell = document.createElement("td");
+                        cell.textContent = rowData[key];
+                        row.appendChild(cell);
+                    });
+
+                    // Add a delete button to the row
+                    var deleteCell = document.createElement("td");
+                    var deleteButton = document.createElement("button");
+                    deleteButton.textContent = "Delete";
+                    deleteButton.className = "btn btn-danger";
+                    deleteButton.style.padding = "0px 8px"; // Add padding
+                    deleteButton.style.fontSize = "14px"; // Set font size
+                    deleteButton.addEventListener("click", function() {
+                        deleteRecord(rowData); // Call function to delete the record
+                    });
+                    deleteCell.appendChild(deleteButton);
+                    row.appendChild(deleteCell);
+
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Function to update total exams and total RVUs
+            function updateTotals(totalExams, totalRVUs) {
+                document.getElementById("total-exams").textContent = totalExams;
+                document.getElementById("total-rvus").textContent = totalRVUs.toFixed(2);
+            }
+        
+            // Function to update the pie chart with modality distribution
+            function updatePieChart(modalityDistribution) {
+                // Extract modalities present in the distribution
+                var presentModalities = Object.keys(modalityDistribution);
+
+                // Calculate total count of all modalities
+                var totalCount = Object.values(modalityDistribution).reduce((total, count) => total + count, 0);
+
+                // Calculate percentage distribution for each modality
+                var pieData = presentModalities.map(modality => ({
+                    x: modality,
+                    y: parseFloat(((modalityDistribution[modality] / totalCount) * 100).toFixed(2)),
+                }));
+
+                // Update the pie chart
+                pie.series[0].dataSource = pieData;
+                pie.refresh();
+            }
+
+            // Function to get the CSRF token from the cookie
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Function to handle record deletion
+            function deleteRecord(rowData) {
+                // Display confirmation dialog
+                var confirmDelete = confirm(`Are you sure you want to delete this record (Description = ${rowData.description})?`);
+
+                // If the user confirms deletion, make an AJAX request to delete the record
+                if (confirmDelete) {
+                    // Get the CSRF token from the cookie
+                    const csrftoken = getCookie('csrftoken');
+
+                    $.ajax({
+                        type: "POST",
+                        url: "/delete_record/",  // Update with your actual delete endpoint
+                        headers: { 'X-CSRFToken': csrftoken },
+                        data: {
+                            // Pass necessary data from rowData
+                            record_id: rowData.record_id,
+                        },
+                        success: function(response) {
+                            message = "Record deleted successfully";
+                            showNotification(message);
+                            filterAndLoadData(); // Refresh data after deletion
+                        },
+                        error: function(error) {
+                            message = "Error fetching data: " + error;
+                            showNotification(message, isError=true);
+                            console.error("Error deleting record:", error);
+                        }
+                    });
+                }
+            }
+        });
+    </script>    
+
+{% endblock content %}

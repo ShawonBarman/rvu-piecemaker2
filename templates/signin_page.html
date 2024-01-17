@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Signin
+{% endblock %}
+
+{% block content %}
+    
+    {% load static %}
+    <div class="login-page">
+        {% if messages %}
+            <div class="alert">
+                {% for message in messages %}
+                    <script>alert("{{ message }}");</script>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="login-container">
+            <h2>Login to RVU Piecemaker 2.0</h2>
+            <form method="post" action="{% url 'signin' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+
+            <div class="register-link">
+                Don't have an account? <a href="{% url 'signup' %}">Register here</a>
+            </div>
+
+            <div class="register-link">
+                Are you admin? <a href="/admin">Click here</a>
+            </div>
+
+            <div class="forgot-password">
+                <a href="{% url 'change_password' %}">Change Your Password?</a>
+            </div>
+        </div>
+    </div>
+
+{% endblock content %}
